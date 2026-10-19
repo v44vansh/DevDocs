@@ -1,0 +1,32 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DEVDOCS_AUTH_SECRET: ${DEVDOCS_AUTH_SECRET:-change-this-local-secret}
+      DEVDOCS_DEMO_USERNAME: ${DEVDOCS_DEMO_USERNAME:-demo}
+      DEVDOCS_DEMO_PASSWORD: ${DEVDOCS_DEMO_PASSWORD:-demo}
+      DEVDOCS_DATA_DIR: /data
+      DEVDOCS_MAX_UPLOAD_BYTES: ${DEVDOCS_MAX_UPLOAD_BYTES:-5242880}
+      DEVDOCS_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      DEVDOCS_OLLAMA_URL: ${DEVDOCS_OLLAMA_URL:-}
+      DEVDOCS_OLLAMA_MODEL: ${DEVDOCS_OLLAMA_MODEL:-qwen2.5:3b}
+    volumes:
+      - devdocs-data:/data
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
+volumes:
+  devdocs-data:
