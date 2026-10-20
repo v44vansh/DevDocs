@@ -47,6 +47,73 @@ docker compose down
 
 The named volume is intentionally retained. To remove local application data, run `docker compose down --volumes`.
 
+## Deploy the frontend to GitHub Pages
+
+GitHub Pages can host the built React frontend only. It cannot run the FastAPI API, store uploads, or run Ollama. You must make the API reachable at a public HTTPS URL first, using a server you control or a separate hosting provider. Do not use `http://localhost:8000` for the Pages deployment.
+
+### 1. Host the backend separately
+
+Build and run the API with Docker on a reachable machine:
+
+```bash
+docker build -t devdocs-api .
+docker run --rm -p 8000:8000 \
+  -e DEVDOCS_AUTH_SECRET="replace-with-a-long-random-value" \
+  -e DEVDOCS_ALLOWED_ORIGINS="https://YOUR_USERNAME.github.io" \
+  -e DEVDOCS_DATA_DIR=/data \
+  -v devdocs-data:/data \
+  devdocs-api
+```
+
+The browser URL for a project site includes the repository path:
+
+```text
+https://YOUR_USERNAME.github.io/YOUR_REPOSITORY
+```
+
+For CORS, use only the origin (without the repository path):
+
+```text
+https://YOUR_USERNAME.github.io
+```
+
+The API must allow that origin through `DEVDOCS_ALLOWED_ORIGINS`. A local API is useful for development but will not be reachable from GitHub Pages visitors.
+
+### 2. Configure GitHub Pages
+
+The repository includes `.github/workflows/deploy-pages.yml`. In GitHub:
+
+1. Open **Settings → Pages**.
+2. Set **Source** to **GitHub Actions**.
+3. Open **Settings → Secrets and variables → Actions → Variables**.
+4. Add this repository variable:
+
+   ```text
+   VITE_API_BASE_URL=https://your-public-api.example.com
+   ```
+
+5. Optionally add:
+
+   ```text
+   VITE_BASE_PATH=/YOUR_REPOSITORY/
+   ```
+
+   This is normally inferred automatically from `GITHUB_REPOSITORY`.
+
+6. Push to `main`, or run the **Deploy DevDocs AI frontend to GitHub Pages** workflow manually from the **Actions** tab.
+
+Your frontend URL will be:
+
+```text
+https://YOUR_USERNAME.github.io/YOUR_REPOSITORY/
+```
+
+The workflow runs `npm ci`, builds `apps/web`, uploads the `dist` artifact, and deploys it through the official Pages actions. If `VITE_API_BASE_URL` is missing, it still publishes the UI with the local API fallback and shows the app's explicit API-unavailable state until a public backend URL is configured.
+
+### Free hosting warning
+
+GitHub Pages itself is free. A public FastAPI backend and persistent document storage are separate services, and their free tiers can sleep, expire, or have storage limits. For a genuinely free-forever setup, run the Docker Compose stack on your own computer or home server and use GitHub Pages only when the API is publicly reachable. Never commit passwords, tokens, or `.env` files.
+
 ## Run without Docker
 
 ### Backend
